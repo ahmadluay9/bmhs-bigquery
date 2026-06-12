@@ -23,12 +23,12 @@ Tabel ini dikonfigurasi dengan:
 * Klasterisasi berdasarkan `hospital_name` dan `department` untuk mengoptimalkan performa query.
 
 ```sql
-CREATE OR REPLACE TABLE `healthcare_forecasting_jakarta.hospital_admissions_daily`
+CREATE OR REPLACE TABLE `healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
 (
-  date DATE REQUIRED,
-  hospital_name STRING REQUIRED,
-  department STRING REQUIRED,
-  admissions_count INT64 REQUIRED,
+  date DATE NOT NULL,
+  hospital_name STRING NOT NULL,
+  department STRING NOT NULL,
+  admissions_count INT64 NOT NULL,
   avg_wait_time_minutes FLOAT64,
   temperature_celsius FLOAT64,
   rainfall_mm FLOAT64,
@@ -38,31 +38,6 @@ CREATE OR REPLACE TABLE `healthcare_forecasting_jakarta.hospital_admissions_dail
 )
 PARTITION BY date
 CLUSTER BY hospital_name, department;
-
-```
-
----
-
-## 3. Membuat Tabel `dengue_cases_weekly`
-
-Tabel ini dikonfigurasi dengan:
-
-* Partisi berdasarkan kolom `week_start_date` harian (BigQuery akan mempartisi secara harian berdasarkan tanggal mulai minggu tersebut).
-* Klasterisasi berdasarkan kolom `district`.
-
-```sql
-CREATE OR REPLACE TABLE `healthcare_forecasting_jakarta.dengue_cases_weekly`
-(
-  week_start_date DATE REQUIRED,
-  district STRING REQUIRED,
-  case_count INT64 REQUIRED,
-  average_humidity_pct FLOAT64,
-  total_rainfall_mm FLOAT64,
-  average_temp_celsius FLOAT64
-)
-PARTITION BY week_start_date
-CLUSTER BY district;
-
 ```
 
 ---
@@ -71,6 +46,42 @@ CLUSTER BY district;
 > * Tipe data `INTEGER` pada Python BigQuery SDK otomatis dikonversi menjadi `INT64` di BigQuery SQL, dan `FLOAT` menjadi `FLOAT64`.
 > 
 >
+
+Saya menerima permintaan Anda untuk membuat query SQL guna melakukan *ingest* data CSV dari Google Cloud Storage (yang diunggah melalui kode di **Canvas**) ke dalam tabel BigQuery.
+
+Karena query ini bersifat Q&A dan penjelasan, saya akan langsung menjawabnya di sini tanpa mengubah isi dokumen di **Canvas**.
+
+Berikut adalah query SQL BigQuery menggunakan perintah `LOAD DATA` untuk menarik langsung berkas CSV yang berada di bucket GCS Anda (`gs://healthcare-forecasting-jakarta-bucket/hospital_admissions_daily.csv`) ke dalam tabel BigQuery Anda:
+
+### 1. Query SQL `LOAD DATA` (Rekomendasi Utama)
+
+Query ini akan membaca langsung berkas CSV dari Cloud Storage dan memasukkannya ke dalam tabel yang telah didefinisikan sebelumnya.
+
+```sql
+LOAD DATA OVERWRITE `healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+FROM FILES (
+  format = 'CSV',
+  uris = ['gs://healthcare-forecasting-jakarta-bucket/hospital_admissions_daily.csv'],
+  skip_header = 1
+);
+
+```
+
+### Penjelasan Parameter:
+
+* **`OVERWRITE`**: Mengosongkan data lama di dalam tabel terlebih dahulu sebelum memasukkan data baru (berfungsi seperti *Write Truncate*). Jika Anda hanya ingin menambahkan data baru tanpa menghapus data yang sudah ada, ganti kata `OVERWRITE` menjadi **`APPEND`**:
+```sql
+LOAD DATA APPEND `healthcare_forecasting_jakarta_v2.hospital_admissions_daily` ...
+
+```
+
+
+* **`format = 'CSV'`**: Menentukan bahwa berkas sumber berformat CSV sesuai dengan generator data yang kita buat.
+* **`uris`**: Lokasi penyimpanan berkas di GCS (disesuaikan dengan konfigurasi `BUCKET_NAME` dan `GCS_BLOB_NAME` pada berkas di **Canvas**).
+* **`skip_header = 1`**: Mengabaikan baris pertama pada CSV karena baris tersebut merupakan nama kolom (header).
+
+---
+
 
 ## 🤖 Agent System Architecture & Workflows
 
