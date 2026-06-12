@@ -53,12 +53,25 @@ Query ini akan membaca langsung berkas CSV dari Cloud Storage dan memasukkannya 
 
 ```sql
 LOAD DATA OVERWRITE `healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+(
+  date DATE NOT NULL,
+  hospital_name STRING NOT NULL,
+  department STRING NOT NULL,
+  admissions_count INT64 NOT NULL,
+  avg_wait_time_minutes FLOAT64,
+  temperature_celsius FLOAT64,
+  rainfall_mm FLOAT64,
+  air_quality_index INT64,
+  is_holiday INT64,
+  is_weekend INT64
+)
+PARTITION BY date
+CLUSTER BY hospital_name, department
 FROM FILES (
   format = 'CSV',
   uris = ['gs://healthcare-forecasting-jakarta-bucket/hospital_admissions_daily.csv'],
-  skip_header = 1
+  skip_leading_rows = 1
 );
-
 ```
 
 ### Penjelasan Parameter:
