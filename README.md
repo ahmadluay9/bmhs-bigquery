@@ -47,13 +47,7 @@ CLUSTER BY hospital_name, department;
 > 
 >
 
-Saya menerima permintaan Anda untuk membuat query SQL guna melakukan *ingest* data CSV dari Google Cloud Storage (yang diunggah melalui kode di **Canvas**) ke dalam tabel BigQuery.
-
-Karena query ini bersifat Q&A dan penjelasan, saya akan langsung menjawabnya di sini tanpa mengubah isi dokumen di **Canvas**.
-
-Berikut adalah query SQL BigQuery menggunakan perintah `LOAD DATA` untuk menarik langsung berkas CSV yang berada di bucket GCS Anda (`gs://healthcare-forecasting-jakarta-bucket/hospital_admissions_daily.csv`) ke dalam tabel BigQuery Anda:
-
-### 1. Query SQL `LOAD DATA` (Rekomendasi Utama)
+### 1. Query SQL `LOAD DATA`
 
 Query ini akan membaca langsung berkas CSV dari Cloud Storage dan memasukkannya ke dalam tabel yang telah didefinisikan sebelumnya.
 
