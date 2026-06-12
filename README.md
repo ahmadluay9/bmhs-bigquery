@@ -47,7 +47,7 @@ CLUSTER BY hospital_name, department;
 > 
 >
 
-### 1. Query SQL `LOAD DATA`
+## 1. Query SQL `LOAD DATA`
 
 Query ini akan membaca langsung berkas CSV dari Cloud Storage dan memasukkannya ke dalam tabel yang telah didefinisikan sebelumnya.
 
@@ -89,6 +89,104 @@ LOAD DATA APPEND `healthcare_forecasting_jakarta_v2.hospital_admissions_daily` .
 
 ---
 
+## Train Machine Learning Model
+
+```sql
+CREATE OR REPLACE MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`
+OPTIONS(
+  model_type = 'ARIMA_PLUS',
+  time_series_timestamp_col = 'date',
+  time_series_data_col = 'admissions_count',
+  time_series_id_col = ['hospital_name', 'department'],
+  holiday_region = 'ID', -- BigQuery has built-in Indonesian holiday effects!
+  clean_spikes_and_dips = TRUE,
+  adjust_step_changes = TRUE
+) AS
+SELECT 
+  date,
+  hospital_name,
+  department,
+  admissions_count
+FROM 
+  `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+WHERE 
+  date <= '2026-05-01';
+```
+
+Query ini bertujuan untuk **membuat dan melatih model forecasting time-series** menggunakan algoritma bawaan BigQuery, yaitu **ARIMA_PLUS**.
+
+Berikut adalah penjelasan detail untuk setiap bagian dari query SQL tersebut:
+
+---
+
+### 1. Inisialisasi Pembuatan Model
+
+```sql
+CREATE OR REPLACE MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`
+
+```
+
+* **Fungsi**: Membuat model baru bernama `hospital_admissions_arima` di dalam dataset `healthcare_forecasting_jakarta_v2`.
+* **Sifat**: Jika model dengan nama tersebut sudah ada, klausa `OR REPLACE` akan menimpanya (menggantinya dengan versi yang baru dilatih).
+
+---
+
+### 2. Opsi Konfigurasi Model (`OPTIONS`)
+
+Bagian ini mengatur bagaimana algoritma BigQuery ML harus memproses data deret waktu Anda.
+
+* **`model_type = 'ARIMA_PLUS'`**
+* Ini adalah algoritma *time-series* unggulan di BigQuery. Berbeda dengan ARIMA standar, `ARIMA_PLUS` secara otomatis melakukan serangkaian prapemrosesan (*preprocessing*) yang kompleks seperti mendeteksi tren, pola musiman (harian, mingguan, tahunan), mendeteksi anomali/outlier, dan memperhitungkan hari libur.
+
+
+* **`time_series_timestamp_col = 'date'`**
+* Menentukan kolom mana yang menjadi penunjuk waktu (sumbu X). Di sini kita menggunakan kolom `date`.
+
+
+* **`time_series_data_col = 'admissions_count'`**
+* Menentukan variabel numerik yang ingin kita ramalkan/prediksi nilainya di masa depan (jumlah admisi/pasien masuk).
+
+
+* **`time_series_id_col = ['hospital_name', 'department']`**
+* **Ini adalah fitur yang sangat kuat.** Alih-alih membuat satu model global untuk semua rumah sakit, BigQuery akan secara otomatis membuat **banyak model time-series terpisah** untuk setiap kombinasi unik dari nama rumah sakit dan departemennya (misalnya: model khusus untuk *RSUD Tarakan - Emergency Room*, model khusus untuk *RS Fatmawati - ICU*, dll.). Semuanya berjalan paralel hanya dalam satu query tunggal.
+
+
+* **`holiday_region = 'ID'`**
+* Mengintegrasikan kalender hari libur nasional **Indonesia (ID)** yang sudah disediakan oleh Google. BigQuery akan otomatis menyesuaikan prediksi naik-turunnya jumlah pasien berdasarkan efek hari libur nasional di Indonesia (seperti Lebaran, Tahun Baru, dll.).
+
+
+* **`clean_spikes_and_dips = TRUE`**
+* Mengaktifkan pembersihan data pencilan otomatis. Jika ada lonjakan (spikes) atau penurunan (dips) ekstrem yang bersifat anomali sementara (misalnya ada gangguan pencatatan sistem), model akan membersihkannya terlebih dahulu agar tidak merusak akurasi tren jangka panjang.
+
+
+* **`adjust_step_changes = TRUE`**
+* Menginstruksikan model untuk mendeteksi perubahan baseline permanen (*step changes*). Contoh: Jika sebuah rumah sakit tiba-tiba membuka gedung baru sehingga kapasitasnya melonjak permanen, model akan menyesuaikan baseline proyeksinya secara otomatis.
+
+
+
+---
+
+### 3. Data Masukan untuk Pelatihan (`AS SELECT ...`)
+
+```sql
+AS
+SELECT 
+  date,
+  hospital_name,
+  department,
+  admissions_count
+FROM 
+  `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+WHERE 
+  date <= '2026-05-01';
+
+```
+
+* **Fungsi**: Memilih kolom yang dibutuhkan dari tabel data harian rumah sakit yang telah di-ingest sebelumnya.
+* **Strategi Pembatasan Tanggal (`WHERE date <= '2026-05-01'`)**:
+* Di dalam script data generator, data Anda digenerate hingga **31 Mei 2026**.
+* Dengan membatasi data pelatihan hanya sampai **1 Mei 2026**, Anda menyisakan data sisa (1 Mei hingga 31 Mei 2026) sebagai **holdout/test set** (data uji).
+* Ini adalah praktik terbaik (*best practice*) dalam Data Science agar nantinya Anda bisa membandingkan hasil ramalan model di bulan Mei 2026 dengan data aktual yang sebenarnya guna mengukur tingkat akurasi (seperti nilai MAPE atau RMSE).
 
 ## 🤖 Agent System Architecture & Workflows
 
