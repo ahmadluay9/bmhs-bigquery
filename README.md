@@ -98,7 +98,7 @@ OPTIONS(
   time_series_timestamp_col = 'date',
   time_series_data_col = 'admissions_count',
   time_series_id_col = ['hospital_name', 'department'],
-  holiday_region = 'ID', -- BigQuery has built-in Indonesian holiday effects!
+  holiday_region = 'ID',
   clean_spikes_and_dips = TRUE,
   adjust_step_changes = TRUE
 ) AS
@@ -187,6 +187,136 @@ WHERE
 * Di dalam script data generator, data Anda digenerate hingga **31 Mei 2026**.
 * Dengan membatasi data pelatihan hanya sampai **1 Mei 2026**, Anda menyisakan data sisa (1 Mei hingga 31 Mei 2026) sebagai **holdout/test set** (data uji).
 * Ini adalah praktik terbaik (*best practice*) dalam Data Science agar nantinya Anda bisa membandingkan hasil ramalan model di bulan Mei 2026 dengan data aktual yang sebenarnya guna mengukur tingkat akurasi (seperti nilai MAPE atau RMSE).
+
+---
+## Evaluasi
+
+###  1. 12 Baris (Rows 1-12 of 12)
+
+Jumlah 12 baris ini terbentuk karena pada konfigurasi query pembuatan model, kita menggunakan parameter:
+`time_series_id_col = ['hospital_name', 'department']`
+
+Dalam generator data kita, terdapat **4 Rumah Sakit** dan **3 Departemen**. BigQuery secara otomatis memecah data tersebut menjadi **12 deret waktu (*time series*) yang unik** (4 RS $\times$ 3 Departemen = 12 kombinasi) dan melatih 12 model ARIMA secara paralel. Setiap baris pada tabel ini mewakili hasil evaluasi dari satu model spesifik untuk kombinasi RS dan Departemen tertentu.
+
+---
+
+### 2. Penjelasan Kolom-Kolom Tabel Evaluasi
+
+Kolom-kolom ini menunjukkan arsitektur terbaik yang dipilih secara otomatis oleh BigQuery (*Auto-ARIMA*) serta metrik statistik performa untuk masing-masing dari 12 model tersebut:
+
+* **`Non Seasonal P` ($p$)**: Menunjukkan ordo *Autoregressive* (AR) bagian non-musiman. Nilai `1` berarti nilai hari ini dipengaruhi oleh 1 hari sebelumnya. Nilai `0` berarti tidak ada pengaruh langsung dari hari sebelumnya secara non-musiman.
+* **`Non Seasonal D` ($d$)**: Menunjukkan tingkat *Differencing* (pembedaan) untuk membuat data menjadi stasioner. Semua model menunjukkan nilai `1`, yang berarti data membutuhkan 1 kali proses pengurangan dengan hari sebelumnya agar trennya stabil.
+* **`Non Seasonal Q` ($q$)**: Menunjukkan ordo *Moving Average* (MA) bagian non-musiman. Nilai `1` menunjukkan model menggunakan rata-rata bergerak dari 1 error historis sebelumnya untuk memperbaiki prediksi.
+* **`Has Drift`**: Berfungsi untuk mendeteksi apakah tren data memiliki kecenderungan naik/turun yang konstan secara jangka panjang (*drift*). Di sini semua bernilai `False`.
+* **`Has Spikes And Dips`**: Menunjukkan apakah BigQuery mendeteksi dan membersihkan pencilan (*outliers*) berupa lonjakan (*spikes*) atau penurunan tajam (*dips*) ekstrem yang tidak wajar sebelum melatih model. Beberapa model bernilai `True` (outlier berhasil dihilangkan) dan beberapa `False`.
+* **`Has Holiday Effect`**: Semua baris bernilai **`True`**. Ini membuktikan konfigurasi `holiday_region = 'ID'` berhasil diterapkan. Model secara otomatis menyesuaikan prediksinya dengan pola hari libur nasional di Indonesia.
+* **`Has Step Changes`**: Menunjukkan apakah model mendeteksi adanya perubahan tingkat (*level*) dasar data secara permanen. Misalnya, jika jumlah pasien tiba-tiba naik permanen karena ada penambahan fasilitas baru.
+* **`Log Likelihood`**: Ukuran seberapa cocok model dengan data latih (semakin mendekati 0 atau semakin besar nilainya secara aljabar, semakin baik).
+* **`AIC` (Akaike Information Criterion)**: Metrik untuk mengukur kualitas model dengan mempertimbangkan kompleksitasnya. **Semakin rendah nilai AIC, semakin baik dan efisien model tersebut.**
+* **`Variance`**: Menunjukkan varians dari *residual* (error prediksi). Nilai varians yang kecil (seperti `6.973` atau `8.771`) menunjukkan tingkat akurasi prediksi model tersebut sangat tinggi dibandingkan yang bervarians besar (seperti `157.507`).
+* **`Seasonal Period`**: Pola musiman yang berhasil dideteksi secara otomatis oleh BigQuery:
+* `Weekly, Yearly`: Model mendeteksi adanya pola musiman mingguan (misal: Outpatient tutup di hari Minggu) dan tahunan (misal: siklus musim hujan/kemarau di Jakarta).
+* `Weekly`: Hanya memiliki pola mingguan berulang.
+* `No Seasonality`: Data cenderung flat atau acak tanpa pola musiman yang konsisten (biasanya terjadi pada departemen ICU yang kedatangan pasiennya tidak terduga).
+
+---
+
+## Evaluasi terhadap data Mei 2026
+```sql
+SELECT
+  *
+FROM
+  ML.EVALUATE(
+    MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`,
+    (
+      SELECT 
+        date,
+        hospital_name,
+        department,
+        admissions_count
+      FROM 
+        `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+      WHERE 
+        date > '2026-05-01'
+    ),
+    STRUCT(30 AS horizon, TRUE AS perform_aggregation)
+  );
+
+```
+
+query `ML.EVALUATE` khusus ini digunakan untuk menguji seberapa akurat prediksi model jika diadu dengan **data riil yang baru (data holdout/test set)**.
+
+Berikut adalah penjelasan detail untuk setiap komponen di dalam query tersebut:
+
+---
+
+### 1. Fungsi Utama: `ML.EVALUATE`
+
+Fungsi bawaan (*built-in function*) BigQuery ML ini digunakan untuk menghitung metrik evaluasi model. Khusus untuk model berjenis `ARIMA_PLUS`, `ML.EVALUATE` akan menghitung seberapa besar tingkat *error* atau kesalahan prediksi model terhadap data aktual yang Anda sediakan.
+
+---
+
+### 2. Argumen Pertama: Objek Model
+
+```sql
+MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`
+
+```
+
+Argumen ini memberi tahu BigQuery model mana yang ingin dievaluasi. Di sini, Anda memanggil model time-series rumah sakit Jakarta yang sudah dibuat pada langkah sebelumnya.
+
+---
+
+### 3. Argumen Kedua: Data Uji (*Evaluation Data*)
+
+```sql
+(
+  SELECT 
+    date,
+    hospital_name,
+    department,
+    admissions_count
+  FROM 
+    `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+  WHERE 
+    date > '2026-05-01'
+)
+
+```
+
+Ini adalah bagian yang sangat krusial. Perhatikan klausa **`WHERE date > '2026-05-01'`**.
+
+* Saat membuat model, Anda hanya menggunakan data **sampai tanggal 1 Mei 2026** sebagai data latih (*training set*).
+* Di query ini, Anda memasukkan data **setelah tanggal 1 Mei 2026** (data bulan Mei yang tersisa) sebagai data uji (*test set*).
+* Model akan diminta meramal untuk tanggal-tanggal di bulan Mei tersebut, lalu BigQuery akan membandingkan hasil ramalan tersebut dengan nilai `admissions_count` aktual yang ada di dalam tabel ini.
+
+---
+
+### 4. Argumen Ketiga: Parameter Tambahan (`STRUCT`)
+
+```sql
+STRUCT(30 AS horizon, TRUE AS perform_aggregation)
+
+```
+
+Bagian ini mengatur bagaimana proses evaluasi dihitung secara teknis:
+
+* **`30 AS horizon`**: Menginstruksikan model untuk mengevaluasi prediksi hingga **30 langkah (hari) ke depan** terhitung sejak titik akhir data latih (artinya, meramal sepanjang bulan Mei 2026).
+* **`TRUE AS perform_aggregation`**:
+* Jika disetel `TRUE`, BigQuery akan merata-ratakan seluruh *error* prediksi selama 30 hari tersebut dan mengembalikan **1 baris evaluasi saja untuk setiap kombinasi rumah sakit & departemen**.
+* Jika disetel `FALSE`, BigQuery akan menampilkan performa *error* hari demi hari secara detail (misal: *error* di hari ke-1 berapa, hari ke-2 berapa, s.d hari ke-30).
+
+---
+
+## Hasil yang Akan Dikeluarkan oleh Query Ini
+
+Ketika Anda menjalankan query ini, BigQuery tidak lagi menampilkan AIC atau Log Likelihood, melainkan metrik kesalahan peramalan standar industri seperti:
+
+1. **`mean_absolute_error` (MAE)**: Rata-rata selisih mutlak antara jumlah pasien prediksi dengan aktual.
+2. **`mean_squared_error` (MSE)**: Rata-rata selisih kuadrat (memberikan bobot lebih besar pada error yang besar).
+3. **`mean_absolute_percentage_error` (MAPE)**: **(Paling mudah dibaca)** Menunjukkan persentase rata-rata error model. Contoh, jika nilai MAPE adalah `8.5`, artinya tingkat akurasi model Anda berkisar di angka $100\% - 8.5\% = 91.5\%$.
+4. **`symmetric_mean_absolute_percentage_error` (SMAPE)**: Versi MAPE yang lebih stabil jika data aktual Anda sering menyentuh angka atau mendekati nol.
+---
 
 ## 🤖 Agent System Architecture & Workflows
 
