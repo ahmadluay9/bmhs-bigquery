@@ -307,15 +307,46 @@ Bagian ini mengatur bagaimana proses evaluasi dihitung secara teknis:
 * Jika disetel `FALSE`, BigQuery akan menampilkan performa *error* hari demi hari secara detail (misal: *error* di hari ke-1 berapa, hari ke-2 berapa, s.d hari ke-30).
 
 ---
+## Penjelasan Metrik Evaluasi
 
-## Hasil yang Akan Dikeluarkan oleh Query Ini
+### 1. Panduan Singkat Membaca Metrik Evaluasi
 
-Ketika Anda menjalankan query ini, BigQuery tidak lagi menampilkan AIC atau Log Likelihood, melainkan metrik kesalahan peramalan standar industri seperti:
+* **MAE (*Mean Absolute Error*)**: Menunjukkan rata-rata selisih mutlak (jarak) antara prediksi model dengan jumlah pasien riil dalam satuan **orang/hari**.
+* **RMSE (*Root Mean Squared Error*)**: Mirip seperti MAE, tetapi memberikan penalti berat pada error yang besar. Jika nilai RMSE jauh lebih tinggi dari MAE, berarti model sempat kecolongan membuat eror prediksi yang sangat besar di hari-hari tertentu (misalnya saat ada lonjakan pasien dadakan).
+* **MAPE (*Mean Absolute Percentage Error*)**: Mengukur persentase rata-rata error. **Formula akurasinya adalah $100\% - \text{MAPE}$**. Nilai di bawah 20% dianggap sangat baik, 20%-50% cukup baik.
+* **MASE (*Mean Absolute Scaled Error*)**: Metrik terbaik untuk membandingkan performa antar-departemen. Jika **$\text{MASE} < 1$**, berarti model ARIMA_PLUS Anda **jauh lebih pintar** dan akurat dibandingkan tebakan model dasar (*naive baseline*—seperti menebak bahwa jumlah pasien hari ini akan persis sama dengan kemarin).
 
-1. **`mean_absolute_error` (MAE)**: Rata-rata selisih mutlak antara jumlah pasien prediksi dengan aktual.
-2. **`mean_squared_error` (MSE)**: Rata-rata selisih kuadrat (memberikan bobot lebih besar pada error yang besar).
-3. **`mean_absolute_percentage_error` (MAPE)**: **(Paling mudah dibaca)** Menunjukkan persentase rata-rata error model. Contoh, jika nilai MAPE adalah `8.5`, artinya tingkat akurasi model Anda berkisar di angka $100\% - 8.5\% = 91.5\%$.
-4. **`symmetric_mean_absolute_percentage_error` (SMAPE)**: Versi MAPE yang lebih stabil jika data aktual Anda sering menyentuh angka atau mendekati nol.
+### 2. Analisis Berdasarkan Departemen (Insight Utama)
+
+Jika kita kelompokkan data di atas berdasarkan departemen, kita akan menemukan karakteristik unik dari performa model:
+
+#### Emergency Room (Instalasi Gawat Darurat) — *Performa Terbaik!*
+
+* **Rentang MAPE**: **10.4% – 16.3%** (Artinya akurasi model mencapai **83.7% hingga 89.6%**).
+* **Analisis**: Model bekerja sangat akurat di UGD. Sebagai contoh, di **RS Fatmawati UGD**, nilai MAE-nya adalah `7.8`. Artinya, jika model menebak akan ada 50 pasien UGD besok, jumlah aslinya di lapangan melesetnya hanya berkisar antara 42 sampai 58 pasien. Nilai MASE seluruh UGD berada di bawah 1 (`0.70 - 0.89`), membuktikan model ini sangat andal.
+
+#### ICU (Intensive Care Unit) — *Error Kecil secara Angka, tapi Persentase Tinggi*
+
+* **Rentang MAE**: **2.1 – 3.3 orang per hari**.
+* **Rentang MAPE**: **25.8% – 50.5%**.
+* **Analisis**: Jangan terkecoh oleh tingginya angka MAPE di ICU (terutama RSUD Pasar Minggu yang menyentuh 50.5%). Di ICU, jumlah pasien harian memang sangat sedikit (misal rata-rata hanya 4-6 orang sehari). Jika model menebak 4 pasien padahal aslinya 2 pasien, secara angka mutlak melesetnya cuma **2 orang (MAE sangat kecil)**, namun secara persentase erornya langsung **50%**. Model tetap dinilai sukses karena MASE mayoritas berada di kisaran `0.59 - 0.77`.
+
+#### Outpatient (Poliklinik/Rawat Jalan) — *Tantangan Terbesar Model*
+
+* **Rentang MAE**: **7.5 – 13.4 orang per hari**.
+* **Rentang MAPE**: **17.7% – 58.0%**.
+* **Analisis**: Departemen Rawat Jalan memiliki volume pasien paling besar dan fluktuatif (sangat ramai di hari Senin, turun di akhir pekan, dan tutup saat hari libur).
+* **RSUD Cengkareng** memiliki performa terbaik di kelas rawat jalan dengan MAPE hanya `17.7%`.
+* **RSUD Tarakan** memiliki MAPE tertinggi (`58%`). Ini menandakan adanya pola fluktuasi ekstrem di RSUD Tarakan pada bulan Mei 2026 yang belum sepenuhnya tertangkap dengan mulus oleh model, meskipun nilai MASE-nya `0.84` (masih lebih baik daripada model tebakan biasa).
+
+---
+
+### 3. Kesimpulan Evaluasi Untuk Anda
+
+Jika Anda harus mempresentasikan hasil ini kepada manajemen rumah sakit, berikut adalah poin kesimpulannya:
+
+1. **Model Siap Dipakai**: Nilai **MASE < 1** pada 11 dari 12 kombinasi membuktikan bahwa BigQuery ARIMA_PLUS ini sangat layak digunakan untuk perencanaan logistik obat dan penjadwalan tenaga medis harian.
+2. **Fokus Pembenahan**: Departemen *Outpatient* (Rawat Jalan) di RSUD Tarakan perlu diperiksa lebih lanjut. Anda bisa meningkatkan akurasinya di masa depan dengan menambahkan variabel eksternal tambahan (seperti jadwal rotasi dokter spesifik) jika diperlukan.
 ---
 
 ## 🤖 Agent System Architecture & Workflows
