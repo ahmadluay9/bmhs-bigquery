@@ -348,7 +348,70 @@ Jika Anda harus mempresentasikan hasil ini kepada manajemen rumah sakit, berikut
 1. **Model Siap Dipakai**: Nilai **MASE < 1** pada 11 dari 12 kombinasi membuktikan bahwa BigQuery ARIMA_PLUS ini sangat layak digunakan untuk perencanaan logistik obat dan penjadwalan tenaga medis harian.
 2. **Fokus Pembenahan**: Departemen *Outpatient* (Rawat Jalan) di RSUD Tarakan perlu diperiksa lebih lanjut. Anda bisa meningkatkan akurasinya di masa depan dengan menambahkan variabel eksternal tambahan (seperti jadwal rotasi dokter spesifik) jika diperlukan.
 ---
+## Prediction
 
+```sql
+SELECT
+  hospital_name,
+  department,
+  forecast_timestamp,
+  ROUND(forecast_value) AS forecasted_admissions,
+  ROUND(prediction_interval_lower_bound) AS lower_bound,
+  ROUND(prediction_interval_upper_bound) AS upper_bound
+FROM
+  ML.FORECAST(
+    MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`,
+    STRUCT(30 AS horizon, 0.90 AS confidence_level)
+  )
+ORDER BY
+  hospital_name,
+  department,
+  forecast_timestamp;
+```
+
+### 1. Fungsi Utama: `ML.FORECAST`
+
+Fungsi bawaan BigQuery ML ini digunakan khusus untuk model deret waktu (*time-series*) seperti `ARIMA_PLUS`. Fungsi ini bertugas mengeksekusi model yang sudah dilatih untuk memproyeksikan nilai-nilai ke masa depan (masa yang belum terjadi di dalam data pelatihan).
+
+Di dalam fungsi ini, terdapat dua parameter penting:
+
+* **`MODEL ...hospital_admissions_arima`**: Menentukan model mana yang digunakan sebagai otak untuk melakukan prediksi.
+* **`STRUCT(30 AS horizon, 0.90 AS confidence_level)`**:
+* **`30 AS horizon`**: Menginstruksikan model untuk meramal hingga **30 hari ke depan** dari titik data terakhir yang tersedia.
+* **`0.90 AS confidence_level`**: Menentukan tingkat kepercayaan (90%) untuk batas atas dan batas bawah prediksi. Artinya, model mendesain rentang prediksi di mana ia 90% yakin bahwa jumlah pasien riil di lapangan nantinya akan jatuh di dalam rentang tersebut.
+
+
+
+---
+
+### 2. Kolom yang Dipilih (`SELECT`)
+
+Hasil mentah dari `ML.FORECAST` sebenarnya mengeluarkan banyak kolom statistik teknis. Query Anda melakukan *filtering* dan pembulatan agar outputnya bersih dan mudah dibaca oleh tim operasional rumah sakit:
+
+* **`hospital_name` & `department**`: Menunjukkan identitas rumah sakit dan poliklinik mana yang sedang diramal.
+* **`forecast_timestamp`**: Tanggal di masa depan tempat prediksi tersebut berlaku (Hari ke-1, Hari ke-2, hingga Hari ke-30).
+* **`ROUND(forecast_value) AS forecasted_admissions`**: Ini adalah **angka prediksi utama**. Karena jumlah pasien/manusia tidak mungkin berbentuk desimal (misal 45.7 orang), fungsi `ROUND` digunakan untuk membulatkannya ke satuan terdekat menjadi bilangan bulat (menjadi 46 orang).
+* **`ROUND(prediction_interval_lower_bound) AS lower_bound`**: Batas bawah prediksi (skenario ter-sepi).
+* **`ROUND(prediction_interval_upper_bound) AS upper_bound`**: Batas atas prediksi (skenario ter-ramai).
+
+> **Mengapa Batas Atas dan Bawah Penting?**
+> Jika untuk tanggal besok `forecasted_admissions` adalah **50**, dengan `lower_bound` **40** dan `upper_bound` **65**, maka manajemen rumah sakit bisa bersiap-siap: *minimal* menyediakan logistik untuk 40 pasien, dan menyiapkan kapasitas darurat hingga 65 pasien.
+
+---
+
+### 3. Pengurutan Data (`ORDER BY`)
+
+```sql
+ORDER BY
+  hospital_name,
+  department,
+  forecast_timestamp;
+
+```
+
+Bagian ini memastikan hasil prediksi disajikan secara rapi dan berurutan. Data akan dikelompokkan per rumah sakit dahulu, lalu per departemen di dalam rumah sakit tersebut, dan barisnya diurutkan kronologis dari tanggal terdekat hingga tanggal terjauh (hari ke-1 sampai hari ke-30).
+
+---
 ## 🤖 Agent System Architecture & Workflows
 
 Our AI agent solution uses the **Google Agent Development Kit (ADK)** to orchestrate multiple sub-agents in a highly secured, parallelized pipeline. Below are the visual maps of how prompts are authorized, how data is retrieved, and how the multi-agent orchestration generates, refines, and executes queries.
