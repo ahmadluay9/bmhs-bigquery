@@ -5,6 +5,10 @@ import random
 import datetime
 import csv
 
+# =========================================================================================
+# UTILITY FUNCTIONS
+# =========================================================================================
+
 def generate_poisson(lam):
     """Generates a Poisson-distributed random variable."""
     if lam <= 0:
@@ -44,14 +48,20 @@ def get_indonesian_holidays(year):
         holidays.update({datetime.date(2026, 3, 20), datetime.date(2026, 3, 21)})
     return holidays
 
+# =========================================================================================
+# DATA GENERATION LOGIC (ALIGNED WITH SCHEMA)
+# =========================================================================================
+
 def generate_hospital_data(start_date, end_date):
     """Generates daily hospital admissions data with seasonality, trends, weather and holidays."""
     print("Generating hospital admissions daily dataset...")
+    
+    # Menambahkan hospital_id yang sesuai dengan master dim_hospitals demi integritas Foreign Key
     hospitals = [
-        {"name": "RSUD Pasar Minggu", "base": 30.0},
-        {"name": "RSUD Tarakan", "base": 45.0},
-        {"name": "RSUD Cengkareng", "base": 35.0},
-        {"name": "RS Fatmawati", "base": 60.0}
+        {"id": "RS-001", "name": "RSUD Pasar Minggu", "base": 30.0},
+        {"id": "RS-002", "name": "RSUD Tarakan", "base": 45.0},
+        {"id": "RS-003", "name": "RSUD Cengkareng", "base": 35.0},
+        {"id": "RS-004", "name": "RS Fatmawati", "base": 60.0}
     ]
     
     departments = [
@@ -163,8 +173,10 @@ def generate_hospital_data(start_date, end_date):
                 avg_wait = 15.0 + 0.4 * admissions + random.uniform(-3, 3)
                 avg_wait = max(5.0, round(avg_wait, 1))
                 
+                # Output dictionary diselaraskan dengan susunan skema SQL tabel BigQuery Anda
                 records.append({
                     "date": current_date.strftime("%Y-%m-%d"),
+                    "hospital_id": hosp["id"],            # Kolom Primary Key relasional
                     "hospital_name": hosp["name"],
                     "department": dept["name"],
                     "admissions_count": int(admissions),
@@ -181,12 +193,16 @@ def generate_hospital_data(start_date, end_date):
         
     return records
 
+# =========================================================================================
+# FILE SAVING EXECUTION
+# =========================================================================================
+
 def save_data_to_csv():
-    # Definisikan rentang waktu data
+    # Definisikan rentang waktu data simulasi (2022 s.d. Pertengahan 2026)
     start_date = datetime.date(2022, 1, 1)
     end_date = datetime.date(2026, 5, 31)
     
-    # Generate data rumah sakit saja
+    # Generate data rumah sakit terintegrasi
     hosp_records = generate_hospital_data(start_date, end_date)
     
     csv_file = "hospital_admissions_daily.csv"

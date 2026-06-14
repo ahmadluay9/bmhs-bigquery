@@ -1,4 +1,6 @@
+
 ---
+
 ## 🤖 Agent System Architecture & Workflows
 
 Our AI agent solution uses the **Google Agent Development Kit (ADK)** to orchestrate multiple sub-agents in a highly secured, parallelized pipeline. Below are the visual maps of how prompts are authorized, how data is retrieved, and how the multi-agent orchestration generates, refines, and executes queries.
