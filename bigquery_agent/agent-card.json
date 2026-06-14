@@ -1,0 +1,182 @@
+{
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "security": [
+    {
+      "google_oauth": [
+        "openid",
+        "email",
+        "profile"
+      ]
+    }
+  ],
+  "securitySchemes": {
+    "google_oauth": {
+      "type": "oauth2",
+      "description": "Google Authentication",
+      "flows": {
+        "authorizationCode": {
+           "authorizationUrl": "https://accounts.google.com/o/oauth2/auth?access_type=offline&prompt=consent",
+          "tokenUrl": "https://oauth2.googleapis.com/token",
+          "scopes": {
+            "openid": "Authenticate using your Google account",
+            "email": "View your email address",
+            "profile": "View basic profile information"
+          }
+        }
+      }
+    }
+  },
+  "description": "An ADK Agent",
+  "name": "bigquery_pipeline_workflow",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "skills": [
+    {
+      "description": "This workflow orchestrates the following nodes: schema_retrieval_agent: execute the schema_retrieval_agent node; sql_retrieval_agent: execute the sql_retrieval_agent node; retrieval_join: execute the retrieval_join node; sql_generation_agent: execute the sql_generation_agent node; sql_validation_agent: execute the sql_validation_agent node; validation_router: Routes the workflow based on validation results and limits the loop to 3 iterations; sql_refiner_agent: execute the sql_refiner_agent node; sql_executor_agent: execute the sql_executor_agent node.",
+      "examples": [],
+      "id": "bigquery_pipeline_workflow",
+      "name": "workflow",
+      "tags": [
+        "graph_workflow"
+      ]
+    },
+    {
+      "description": "Orchestrates: schema_retrieval_agent: No description; sql_retrieval_agent: No description; retrieval_join: No description; sql_generation_agent: No description; sql_validation_agent: No description; validation_router: Routes the workflow based on validation results and limits the loop to 3 iterations.; sql_refiner_agent: No description; sql_executor_agent: No description",
+      "id": "bigquery_pipeline_workflow-sub-agents",
+      "name": "sub-agents",
+      "tags": [
+        "graph_workflow",
+        "orchestration"
+      ]
+    },
+    {
+      "description": "Anda adalah Schema Retrieval Agent. Tanggung jawab utama Anda adalah mengambil detail skema BigQuery untuk tabel yang relevan dengan permintaan pengguna.\nUntuk menemukan tabel yang relevan, lakukan pencarian semantik pada tabel `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` menggunakan tool `execute_sql_readonly`.\nAnda harus menjalankan kueri VECTOR_SEARCH untuk menemukan dokumen skema yang paling relevan. Sebagai contoh:\nSELECT base.content, distance\nFROM VECTOR_SEARCH(\n  TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings`,\n  'embedding',\n  query_value => ARRAY(\n    SELECT LAX_FLOAT64(val) \n    FROM UNNEST(\n      JSON_QUERY_ARRAY(\n        `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.get_text_embedding`('<highly_descriptive_search_query_based_on_user_request>')\n      )\n    ) AS val\n  ),\n  top_k => 3,\n  distance_type => 'COSINE'\n) AS base\nORDER BY distance ASC;\n\nPastikan `<highly_descriptive_search_query_based_on_user_request>` adalah kueri pencarian deskriptif yang mencerminkan tabel, kolom, atau konsep klinis yang diminta.\nBerikan ringkasan yang jelas dan mendetail tentang skema, tabel, kolom, dan tipe data yang cocok yang ditemukan pada kolom 'content' dari hasil pencarian ke dalam bidang output 'tables_schema'.",
+      "examples": [],
+      "id": "schema_retrieval_agent_schema_retrieval_agent",
+      "name": "schema_retrieval_agent: model",
+      "tags": [
+        "sub_agent:schema_retrieval_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Run a read-only SQL query in the project and return the result. Prefer this tool over\n`execute_sql` if possible.\n\nThis tool is restricted to only `SELECT` statements. `INSERT`, `UPDATE`, and `DELETE`\nstatements and stored procedures aren't allowed. If the query doesn't include a `SELECT`\nstatement, an error is returned. For information on creating queries, see the [GoogleSQL\ndocumentation](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax).\n\n\nExample Queries:\n  -- Count the number of penguins in each island.\n  SELECT island, COUNT(*) AS population\n      FROM bigquery-public-data.ml_datasets.penguins GROUP BY island\n\n  -- Evaluate a bigquery ML Model.\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`)\n\n  -- Evaluate BigQuery ML model on custom data\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Predict using BigQuery ML model:\n  SELECT * FROM ML.PREDICT(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Forecast data using AI.FORECAST\n  SELECT * FROM AI.FORECAST(TABLE `project.dataset.my_table`, data_col => 'num_trips',\n    timestamp_col => 'date', id_cols => ['usertype'], horizon => 30)\n\nQueries executed using the `execute_sql_readonly` tool will have the job label\n`goog-mcp-server: true` automatically set. Queries are charged to the project specified\n in the `project_id` field.\n",
+      "id": "schema_retrieval_agent_schema_retrieval_agent-execute_sql_readonly",
+      "name": "schema_retrieval_agent: execute_sql_readonly",
+      "tags": [
+        "sub_agent:schema_retrieval_agent",
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Anda adalah SQL Retrieval Agent. Tanggung jawab utama Anda adalah mengambil contoh kueri SQL relevan yang telah terindeks sebelumnya untuk memandu proses pembuatan SQL.\nUntuk menemukan contoh kueri yang relevan, lakukan pencarian semantik pada tabel `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples_embeddings` menggunakan tool `execute_sql_readonly`.\nAnda harus menjalankan kueri VECTOR_SEARCH untuk menemukan dokumen contoh SQL yang paling relevan. Sebagai contoh:\nSELECT base.content, distance\nFROM VECTOR_SEARCH(\n  TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples_embeddings`,\n  'embedding',\n  query_value => ARRAY(\n    SELECT LAX_FLOAT64(val) \n    FROM UNNEST(\n      JSON_QUERY_ARRAY(\n        `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.get_text_embedding`('<highly_descriptive_search_query_based_on_user_request>')\n      )\n    ) AS val\n  ),\n  top_k => 5,\n  distance_type => 'COSINE'\n) AS base\nORDER BY distance ASC;\n\nPastikan `<highly_descriptive_search_query_based_on_user_request>` adalah kueri pencarian deskriptif yang mencerminkan permintaan data pengguna.\nBerikan daftar contoh SQL yang jelas dan mendetail serta deskripsinya yang ditemukan pada kolom 'content' dari hasil pencarian ke dalam bidang output 'dataset_metadata' agar SQL Generation Agent dapat mereplikasi strukturnya.",
+      "examples": [],
+      "id": "sql_retrieval_agent_sql_retrieval_agent",
+      "name": "sql_retrieval_agent: model",
+      "tags": [
+        "sub_agent:sql_retrieval_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Run a read-only SQL query in the project and return the result. Prefer this tool over\n`execute_sql` if possible.\n\nThis tool is restricted to only `SELECT` statements. `INSERT`, `UPDATE`, and `DELETE`\nstatements and stored procedures aren't allowed. If the query doesn't include a `SELECT`\nstatement, an error is returned. For information on creating queries, see the [GoogleSQL\ndocumentation](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax).\n\n\nExample Queries:\n  -- Count the number of penguins in each island.\n  SELECT island, COUNT(*) AS population\n      FROM bigquery-public-data.ml_datasets.penguins GROUP BY island\n\n  -- Evaluate a bigquery ML Model.\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`)\n\n  -- Evaluate BigQuery ML model on custom data\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Predict using BigQuery ML model:\n  SELECT * FROM ML.PREDICT(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Forecast data using AI.FORECAST\n  SELECT * FROM AI.FORECAST(TABLE `project.dataset.my_table`, data_col => 'num_trips',\n    timestamp_col => 'date', id_cols => ['usertype'], horizon => 30)\n\nQueries executed using the `execute_sql_readonly` tool will have the job label\n`goog-mcp-server: true` automatically set. Queries are charged to the project specified\n in the `project_id` field.\n",
+      "id": "sql_retrieval_agent_sql_retrieval_agent-execute_sql_readonly",
+      "name": "sql_retrieval_agent: execute_sql_readonly",
+      "tags": [
+        "sub_agent:sql_retrieval_agent",
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "A custom agent",
+      "examples": [],
+      "id": "retrieval_join_retrieval_join",
+      "name": "retrieval_join: custom",
+      "tags": [
+        "sub_agent:retrieval_join",
+        "custom_agent"
+      ]
+    },
+    {
+      "description": "Anda adalah SQL Generation Agent.\nTugas Anda adalah menghasilkan kueri SQL BigQuery standar yang valid untuk menjawab permintaan pengguna berdasarkan skema dan metadata yang disediakan di bawah ini.\n\nInformasi Skema:\n{SQLGenerationInput.schema_retrieval_agent.tables_schema}\n\nMetadata Dataset:\n{SQLGenerationInput.sql_retrieval_agent.dataset_metadata}\n\nPastikan kueri yang dihasilkan adalah SQL standar dan berhasil dieksekusi.\nKeluarkan HANYA kueri SQL di dalam kolom output 'sql' pada skema.",
+      "examples": [],
+      "id": "sql_generation_agent_sql_generation_agent",
+      "name": "sql_generation_agent: model",
+      "tags": [
+        "sub_agent:sql_generation_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Anda adalah SQL Validation Agent. Tugas Anda adalah memvalidasi apakah kueri SQL yang diberikan sudah benar, valid secara sintaksis, dan sesuai dengan skema yang diambil.\nKueri SQL yang akan divalidasi adalah:\n{SQLQuery.sql}\n\nUntuk memvalidasi kueri tersebut, eksekusi kueri dengan tambahan `LIMIT 1` atau `LIMIT 0` menggunakan tool `execute_sql_readonly`. Hal ini memastikan BigQuery mengompilasi dan memverifikasinya tanpa memproses volume data yang besar.\nJika eksekusi berhasil, isi kolom output sebagai:\n- status: 'VALID'\n- sql: '<the_sql_query>'\n- error: None\n\nJika eksekusi gagal, isi kolom output sebagai:\n- status: 'INVALID'\n- sql: '<the_sql_query>'\n- error: '<pesan kesalahan kompilasi eksak dari BigQuery>'",
+      "examples": [],
+      "id": "sql_validation_agent_sql_validation_agent",
+      "name": "sql_validation_agent: model",
+      "tags": [
+        "sub_agent:sql_validation_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Run a read-only SQL query in the project and return the result. Prefer this tool over\n`execute_sql` if possible.\n\nThis tool is restricted to only `SELECT` statements. `INSERT`, `UPDATE`, and `DELETE`\nstatements and stored procedures aren't allowed. If the query doesn't include a `SELECT`\nstatement, an error is returned. For information on creating queries, see the [GoogleSQL\ndocumentation](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax).\n\n\nExample Queries:\n  -- Count the number of penguins in each island.\n  SELECT island, COUNT(*) AS population\n      FROM bigquery-public-data.ml_datasets.penguins GROUP BY island\n\n  -- Evaluate a bigquery ML Model.\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`)\n\n  -- Evaluate BigQuery ML model on custom data\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Predict using BigQuery ML model:\n  SELECT * FROM ML.PREDICT(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Forecast data using AI.FORECAST\n  SELECT * FROM AI.FORECAST(TABLE `project.dataset.my_table`, data_col => 'num_trips',\n    timestamp_col => 'date', id_cols => ['usertype'], horizon => 30)\n\nQueries executed using the `execute_sql_readonly` tool will have the job label\n`goog-mcp-server: true` automatically set. Queries are charged to the project specified\n in the `project_id` field.\n",
+      "id": "sql_validation_agent_sql_validation_agent-execute_sql_readonly",
+      "name": "sql_validation_agent: execute_sql_readonly",
+      "tags": [
+        "sub_agent:sql_validation_agent",
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Routes the workflow based on validation results and limits the loop to 3 iterations.",
+      "examples": [],
+      "id": "validation_router_validation_router",
+      "name": "validation_router: custom",
+      "tags": [
+        "sub_agent:validation_router",
+        "custom_agent"
+      ]
+    },
+    {
+      "description": "Anda adalah SQL Refiner Agent. Tugas Anda adalah memperbaiki kueri SQL yang gagal dalam proses validasi.\nBerikut adalah kueri SQL yang salah:\n{SQLRefinementInput.sql}\n\nBerikut adalah kesalahan kompilasi atau waktu jalan eksak dari BigQuery:\n{SQLRefinementInput.error}\n\nIni adalah percobaan ke-{SQLRefinementInput.attempt} dari 3.\n\nAnalisis SQL dan kesalahan tersebut secara cermat. Perbaiki sintaksis, referensi tabel, nama kolom, atau join sesuai petunjuk dari pesan kesalahan.\nKeluarkan HANYA kueri SQL hasil perbaikan di dalam kolom output 'sql' pada skema.",
+      "examples": [],
+      "id": "sql_refiner_agent_sql_refiner_agent",
+      "name": "sql_refiner_agent: model",
+      "tags": [
+        "sub_agent:sql_refiner_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Anda adalah SQL Executor Agent. Tugas Anda adalah mengeksekusi kueri SQL final yang telah divalidasi dan menyajikan hasilnya.\nBerikut adalah kueri SQL tervalidasi yang akan dijalankan:\n{SQLExecutionInput.sql}\n\nGunakan tool `execute_sql_readonly` untuk mengeksekusi kueri ini di BigQuery.\nFormat hasil kueri akhir ke dalam tabel markdown yang bersih, profesional, dan menarik secara visual.\nBATASAN KETAT: Anda HANYA boleh menangani operasi BigQuery dan pelaporan hasil kueri. Anda sama sekali tidak diperbolehkan melakukan operasi atau integrasi di luar cakupan database BigQuery. Cukup sajikan wawasan data yang diminta.",
+      "examples": [],
+      "id": "sql_executor_agent_sql_executor_agent",
+      "name": "sql_executor_agent: model",
+      "tags": [
+        "sub_agent:sql_executor_agent",
+        "llm"
+      ]
+    },
+    {
+      "description": "Run a read-only SQL query in the project and return the result. Prefer this tool over\n`execute_sql` if possible.\n\nThis tool is restricted to only `SELECT` statements. `INSERT`, `UPDATE`, and `DELETE`\nstatements and stored procedures aren't allowed. If the query doesn't include a `SELECT`\nstatement, an error is returned. For information on creating queries, see the [GoogleSQL\ndocumentation](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax).\n\n\nExample Queries:\n  -- Count the number of penguins in each island.\n  SELECT island, COUNT(*) AS population\n      FROM bigquery-public-data.ml_datasets.penguins GROUP BY island\n\n  -- Evaluate a bigquery ML Model.\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`)\n\n  -- Evaluate BigQuery ML model on custom data\n  SELECT * FROM ML.EVALUATE(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Predict using BigQuery ML model:\n  SELECT * FROM ML.PREDICT(MODEL `my_dataset.my_model`,\n      (SELECT * FROM `my_dataset.my_table`))\n\n  -- Forecast data using AI.FORECAST\n  SELECT * FROM AI.FORECAST(TABLE `project.dataset.my_table`, data_col => 'num_trips',\n    timestamp_col => 'date', id_cols => ['usertype'], horizon => 30)\n\nQueries executed using the `execute_sql_readonly` tool will have the job label\n`goog-mcp-server: true` automatically set. Queries are charged to the project specified\n in the `project_id` field.\n",
+      "id": "sql_executor_agent_sql_executor_agent-execute_sql_readonly",
+      "name": "sql_executor_agent: execute_sql_readonly",
+      "tags": [
+        "sub_agent:sql_executor_agent",
+        "llm",
+        "tools"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "https://a2a-bigqueryml-agent-158103152291.asia-southeast2.run.app",
+  "version": "0.0.1"
+}

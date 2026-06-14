@@ -27,8 +27,8 @@ flowchart TD
     ParallelStart --> SchemaAgent[<b>Schema Retrieval Agent</b>]
     ParallelStart --> SQLSearchAgent[<b>SQL Retrieval Agent</b>]
     
-    SchemaAgent -->|MCP: list_table_ids / get_table_info| BQ_Metadata[(BigQuery Metadata)]
-    SQLSearchAgent -->|MCP: search-documents| VectorDB[(Toolbox Vector DB)]
+    SchemaAgent -->|MCP: execute_sql_readonly / VECTOR_SEARCH| BQ_Metadata[(BigQuery Embeddings Table)]
+    SQLSearchAgent -->|MCP: execute_sql_readonly / VECTOR_SEARCH| VectorDB[(BigQuery Examples Embeddings Table)]
     
     BQ_Metadata -.-> SchemaAgent
     VectorDB -.-> SQLSearchAgent
@@ -93,13 +93,13 @@ sequenceDiagram
         
         par Retrieve Schemas
             Workflow->>SchemaAgent: Prompt / Request context
-            SchemaAgent->>External: BQ API: get_table_info
-            External-->>SchemaAgent: Table column types & metadata
+            SchemaAgent->>External: BQ API: execute_sql_readonly (VECTOR_SEARCH)
+            External-->>SchemaAgent: Matched schemas & metadata from embeddings
             SchemaAgent-->>Workflow: tables_schema output
         and Retrieve Few-Shot Examples
             Workflow->>SQLSearchAgent: Prompt / Request context
-            SQLSearchAgent->>External: Toolbox Vector DB: search-documents
-            External-->>SQLSearchAgent: Similar SQL templates & descriptions
+            SQLSearchAgent->>External: BQ API: execute_sql_readonly (VECTOR_SEARCH)
+            External-->>SQLSearchAgent: Similar SQL templates & descriptions from embeddings
             SQLSearchAgent-->>Workflow: dataset_metadata output
         end
 
@@ -144,8 +144,8 @@ The system uses a highly structured, self-correcting multi-agent flow. Here is w
 
 #### 2. Parallel Context Retrieval
 Upon initialization, the workflow launches two parallel branches to retrieve physical and semantic context:
-* **Schema Retrieval (`schema_retrieval_agent`)**: Calls the BigQuery MCP tool `get_table_info` to inspect physical schemas of `hospital_admissions_daily` or `dengue_cases_weekly`.
-* **Semantic SQL Search (`sql_retrieval_agent`)**: Conducts a semantic vector search (`search-documents` tool) against our remote Toolbox Vector DB to find matching multi-shot SQL query patterns from `sql_examples.json`.
+* **Schema Retrieval (`schema_retrieval_agent`)**: Performs a semantic search against the `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` table using BigQuery's `VECTOR_SEARCH` and regional `get_text_embedding` Remote Function via the `execute_sql_readonly` tool.
+* **Semantic SQL Search (`sql_retrieval_agent`)**: Performs a semantic search against the `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples_embeddings` table using BigQuery's `VECTOR_SEARCH` and regional `get_text_embedding` Remote Function via the `execute_sql_readonly` tool.
 
 #### 3. Context Merging & SQL Synthesis
 * **Joining (`retrieval_join`)**: A specialized `JoinNode` blocks until both parallel retrieval agents complete, gathering their outputs into a single context.

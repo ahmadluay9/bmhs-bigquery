@@ -50,7 +50,7 @@ OPTIONS(
 
 ### a. Seeding Data ke Tabel `dim_hospitals`
 ```sql
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.dim_hospitals`
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.dim_hospitals`
   (hospital_id, hospital_name, hospital_type, total_beds, district, latitude, longitude)
 VALUES
   ('RS-001', 'RSUD Pasar Minggu', 'RSUD Kelas B', 350, 'Jakarta Selatan', -6.2890, 106.8315),
@@ -157,7 +157,7 @@ LOAD DATA APPEND `healthcare_forecasting_jakarta_v2.hospital_admissions_daily` .
 ## 4. Membuat Tabel `schema_metadata`
 
 ```sql
-CREATE OR REPLACE TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata`
+CREATE OR REPLACE TABLE `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata`
 (
   table_name STRING NOT NULL
     OPTIONS(description="Nama fisik tabel di dalam dataset BigQuery."),
@@ -181,7 +181,7 @@ OPTIONS(
 
 ```sql
 -- 2. Seeding data
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata`
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata`
   (table_name, description, ddl, sample_data)
 VALUES
   ('dim_hospitals', 
@@ -198,7 +198,7 @@ VALUES
 
 ## 5. Membuat Tabel `schema_metadata_embeddings`
 ```sql
-CREATE OR REPLACE TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings`
+CREATE OR REPLACE TABLE `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings`
 (
   content STRING
     OPTIONS(description="Dokumen semantik terstruktur (Table, Description, Definition) yang di-embed secara utuh."),
@@ -349,7 +349,7 @@ def get_vertex_embeddings(request):
 
 - Response Contract Mapping: BigQuery mengharuskan format balasan yang sangat spesifik berupa `{"replies": [[v1, v2, ...], [v1, v2, ...]]}`. Logika di akhir fungsi bertugas menyusun ulang struktur array vektor embeddings agar sesuai dengan kontrak respon BigQuery tersebut.
 
-####requirements.txt
+#### requirements.txt
 Mendefinisikan library Python yang dibutuhkan.
 ```
 functions-framework==3.10.1
@@ -467,16 +467,16 @@ Ini memungkinkan Anda untuk mengganti model Agent Platform atau jumlah dimensi o
 ## 10. Seeding data ke tabel `schema_metadata_embeddings`
 
 ```sql
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` (content, embedding)
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` (content, embedding)
 WITH prepared_docs AS (
   SELECT 
     CONCAT(
-      'Table: eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.', table_name, '\n',
+      'Table: YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.', table_name, '\n',
       'Description: ', description, '\n',
       'Definition: ', ddl
     ) AS doc_content
   FROM 
-    `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata`
+    `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata`
 )
 SELECT 
   doc_content AS content,
@@ -484,7 +484,7 @@ SELECT
     SELECT LAX_FLOAT64(val) 
     FROM UNNEST(
       JSON_QUERY_ARRAY(
-        `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.get_text_embedding`(doc_content)
+        `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.get_text_embedding`(doc_content)
       )
     ) AS val
   ) AS embedding
@@ -503,12 +503,12 @@ Kueri ini menggunakan fitur **CTE (Common Table Expression)** bernama `prepared_
 WITH prepared_docs AS (
   SELECT 
     CONCAT(
-      'Table: eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.', table_name, '\n',
+      'Table: YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.', table_name, '\n',
       'Description: ', description, '\n',
       'Definition: ', ddl
     ) AS doc_content
   FROM 
-    `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata`
+    `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata`
 )
 
 ```
@@ -527,7 +527,7 @@ WITH prepared_docs AS (
 ### 2. Pemanggilan Remote Function (`get_text_embedding`)
 
 ```sql
-`eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.get_text_embedding`(doc_content)
+`YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.get_text_embedding`(doc_content)
 
 ```
 
@@ -550,7 +550,7 @@ Karena output dari *remote function* bertipe data `JSON`, sedangkan kolom target
 ### 4. Penyusunan Kembali dan Penyimpanan Akhir (`ARRAY(...) AS embedding`)
 
 ```sql
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` (content, embedding)
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.schema_metadata_embeddings` (content, embedding)
 SELECT 
   doc_content AS content,
   ARRAY( ... ) AS embedding
@@ -578,7 +578,7 @@ FROM
 ## 11. Train Model
 
 ```sql
-CREATE OR REPLACE MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`
+CREATE OR REPLACE MODEL `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`
 OPTIONS(
   model_type = 'ARIMA_PLUS',
   time_series_timestamp_col = 'date',
@@ -594,7 +594,7 @@ SELECT
   department,
   admissions_count
 FROM 
-  `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
+  `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily`
 WHERE 
   date <= '2026-05-01';
 ```
@@ -965,7 +965,7 @@ Dalam implementasi sistem informasi rumah sakit atau *dashboard* visualisasi, An
 
 ## 14. Membuat Tabel `query_examples`
 ```sql
-CREATE OR REPLACE TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples`
+CREATE OR REPLACE TABLE `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.query_examples`
 (
   id STRING NOT NULL
     OPTIONS(description="ID unik untuk masing-masing baris contoh kueri."),
@@ -987,54 +987,54 @@ OPTIONS(
 ### a. Contoh Kueri Few-Shot
 
 ```sql
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples`
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.query_examples`
   (id, question, sql_query)
 VALUES
   ('1', 
    'Berapa total admisi harian untuk setiap rumah sakit di Jakarta Selatan?', 
-   'SELECT h.hospital_name, SUM(a.admissions_count) AS total_admisi FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.dim_hospitals` h JOIN `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` a ON h.hospital_id = a.hospital_id WHERE h.district = "Jakarta Selatan" GROUP BY h.hospital_name ORDER BY total_admisi DESC;'
+   'SELECT h.hospital_name, SUM(a.admissions_count) AS total_admisi FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.dim_hospitals` h JOIN `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` a ON h.hospital_id = a.hospital_id WHERE h.district = "Jakarta Selatan" GROUP BY h.hospital_name ORDER BY total_admisi DESC;'
   ),
   ('2', 
    'Berapa rata-rata waktu tunggu Emergency Room ketika hari libur nasional?', 
-   'SELECT AVG(avg_wait_time_minutes) AS rata_rata_tunggu FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" AND is_holiday = 1;'
+   'SELECT AVG(avg_wait_time_minutes) AS rata_rata_tunggu FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" AND is_holiday = 1;'
   ),
   ('3', 
    'Bagaimana hasil ramalan jumlah pasien untuk 14 hari ke depan?', 
-   'SELECT * FROM ML.FORECAST(MODEL `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`, STRUCT(14 AS horizon, 0.95 AS confidence_level));'
+   'SELECT * FROM ML.FORECAST(MODEL `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_arima`, STRUCT(14 AS horizon, 0.95 AS confidence_level));'
   ),
   ('4',
    'Berapa rata-rata harian admisi pasien untuk setiap departemen poliklinik?',
-   'SELECT department, AVG(admissions_count) AS rata_rata_admisi, SUM(admissions_count) AS total_admisi FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` GROUP BY department ORDER BY total_admisi DESC;'
+   'SELECT department, AVG(admissions_count) AS rata_rata_admisi, SUM(admissions_count) AS total_admisi FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` GROUP BY department ORDER BY total_admisi DESC;'
   ),
   ('5',
    'Berapa rata-rata admisi harian di UGD saat kondisi udara buruk dibandingkan saat kondisi udara baik?',
-   'SELECT CASE WHEN air_quality_index > 100 THEN "Buruk (>100)" ELSE "Baik/Sedang (<=100)" END AS kategori_udara, AVG(admissions_count) AS rata_rata_admisi_er FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" GROUP BY kategori_udara;'
+   'SELECT CASE WHEN air_quality_index > 100 THEN "Buruk (>100)" ELSE "Baik/Sedang (<=100)" END AS kategori_udara, AVG(admissions_count) AS rata_rata_admisi_er FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" GROUP BY kategori_udara;'
   ),
   ('6',
    'Berapa total kapasitas tempat tidur dan jumlah rumah sakit yang tersedia di setiap wilayah kota Jakarta?',
-   'SELECT district, COUNT(hospital_id) AS jumlah_rs, SUM(total_beds) AS total_tempat_tidur FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.dim_hospitals` GROUP BY district ORDER BY total_tempat_tidur DESC;'
+   'SELECT district, COUNT(hospital_id) AS jumlah_rs, SUM(total_beds) AS total_tempat_tidur FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.dim_hospitals` GROUP BY district ORDER BY total_tempat_tidur DESC;'
   ),
   ('7',
    'Bagaimana rata-rata waktu tunggu di UGD saat hujan lebat dibandingkan saat tidak hujan?',
-   'SELECT CASE WHEN rainfall_mm > 20 THEN "Hujan Lebat (>20mm)" WHEN rainfall_mm > 0 THEN "Hujan Ringan/Sedang" ELSE "Tidak Hujan" END AS kondisi_hujan, AVG(avg_wait_time_minutes) AS rata_rata_tunggu_er FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" GROUP BY kondisi_hujan;'
+   'SELECT CASE WHEN rainfall_mm > 20 THEN "Hujan Lebat (>20mm)" WHEN rainfall_mm > 0 THEN "Hujan Ringan/Sedang" ELSE "Tidak Hujan" END AS kondisi_hujan, AVG(avg_wait_time_minutes) AS rata_rata_tunggu_er FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" GROUP BY kondisi_hujan;'
   ),
   ('8',
    'Berapa perbandingan total pasien Rawat Jalan antara hari kerja dan akhir pekan ?',
-   'SELECT CASE WHEN is_weekend = 1 THEN "Akhir Pekan (Weekend)" ELSE "Hari Kerja (Weekday)" END AS jenis_hari, SUM(admissions_count) AS total_admisi_outpatient FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Outpatient" GROUP BY jenis_hari;'
+   'SELECT CASE WHEN is_weekend = 1 THEN "Akhir Pekan (Weekend)" ELSE "Hari Kerja (Weekday)" END AS jenis_hari, SUM(admissions_count) AS total_admisi_outpatient FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Outpatient" GROUP BY jenis_hari;'
   ),
   ('9',
    'Rumah sakit mana yang memiliki rata-rata waktu tunggu UGD terlama di tahun 2025?',
-   'SELECT hospital_name, AVG(avg_wait_time_minutes) AS rata_rata_tunggu_er FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" AND EXTRACT(YEAR FROM date) = 2025 GROUP BY hospital_name ORDER BY rata_rata_tunggu_er DESC;'
+   'SELECT hospital_name, AVG(avg_wait_time_minutes) AS rata_rata_tunggu_er FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE department = "Emergency Room" AND EXTRACT(YEAR FROM date) = 2025 GROUP BY hospital_name ORDER BY rata_rata_tunggu_er DESC;'
   ),
   ('10',
    'Bagaimana tren bulanan total admisi pasien di seluruh rumah sakit sepanjang tahun 2025?',
-   'SELECT EXTRACT(MONTH FROM date) AS bulan, SUM(admissions_count) AS total_admisi FROM `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE EXTRACT(YEAR FROM date) = 2025 GROUP BY bulan ORDER BY bulan;'
+   'SELECT EXTRACT(MONTH FROM date) AS bulan, SUM(admissions_count) AS total_admisi FROM `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.hospital_admissions_daily` WHERE EXTRACT(YEAR FROM date) = 2025 GROUP BY bulan ORDER BY bulan;'
   );
 ```
 
 ## 15. Membuat Tabel `query_examples_embeddings`
 ```sql
-CREATE OR REPLACE TABLE `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples_embeddings`
+CREATE OR REPLACE TABLE `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.query_examples_embeddings`
 (
   content STRING
     OPTIONS(description="Dokumen semantik terstruktur (Question & SQL) yang di-embed secara utuh."),
@@ -1050,7 +1050,7 @@ OPTIONS(
 
 ## 16. Seeding data ke tabel `query_examples_embeddings`
 ```sql
-INSERT INTO `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples_embeddings` (content, embedding)
+INSERT INTO `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.query_examples_embeddings` (content, embedding)
 WITH prepared_queries AS (
   SELECT 
     CONCAT(
@@ -1058,7 +1058,7 @@ WITH prepared_queries AS (
       'SQL: ', sql_query
     ) AS query_content
   FROM 
-    `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.query_examples`
+    `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.query_examples`
 )
 SELECT 
   query_content AS content,
@@ -1066,7 +1066,7 @@ SELECT
     SELECT LAX_FLOAT64(val) 
     FROM UNNEST(
       JSON_QUERY_ARRAY(
-        `eikon-dev-ai-team.healthcare_forecasting_jakarta_v2.get_text_embedding`(query_content)
+        `YOUR_PROJECT_NAME.healthcare_forecasting_jakarta_v2.get_text_embedding`(query_content)
       )
     ) AS val
   ) AS embedding
