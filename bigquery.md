@@ -241,7 +241,7 @@ Agar proses pembuatan *embeddings* berhasil, *Service Account* yang dihasilkan o
 Saat Anda menjalankan fungsi `AI.EMBED`, *connection* ini bertugas mengirimkan *text payload* dari tabel BigQuery Anda ke *endpoint* model `gemini-embedding-001` di Agent Platform, kemudian menerima kembali respon berupa vektor high-dimensional (`ARRAY<FLOAT64>`) untuk disimpan ke dalam tabel target secara aman.
 
 ```sql
-CREATE CONNECTION IF NOT EXISTS `YOUR_PROJECT_NAME.asia-southeast2.agent_platform_conn`
+CREATE CONNECTION IF NOT EXISTS `YOUR_PROJECT_NAME.asia-southeast2.embedding_conn`
 OPTIONS (
   connection_type = "CLOUD_RESOURCE"
 );
@@ -408,7 +408,7 @@ Perintah terakhir (`gcloud functions describe ...`) digunakan untuk mengambil al
 ```sql
 CREATE OR REPLACE FUNCTION `healthcare_forecasting_jakarta_v2.get_text_embedding`(text STRING)
 RETURNS JSON
-REMOTE WITH CONNECTION `YOUR_PROJECT_NAME.asia-southeast2.agent_platform_conn`
+REMOTE WITH CONNECTION `YOUR_PROJECT_NAME.asia-southeast2.embedding_conn`
 OPTIONS (
   -- URL .run.app asli dari Cloud Function Gen 2 Anda (contoh:https://get-vertex-embeddings-g2u45nvkda-et.a.run.app)
   endpoint = 'https://get-vertex-embeddings-xxxxxxxx-et.a.run.app',
@@ -442,12 +442,12 @@ RETURNS JSON
 #### 2. Connection Binding
 
 ```sql
-REMOTE WITH CONNECTION `YOUR_PROJECT_NAME.asia-southeast2.agent_platform_conn`
+REMOTE WITH CONNECTION `YOUR_PROJECT_NAME.asia-southeast2.embedding_conn`
 
 ```
 
 * **`REMOTE WITH CONNECTION`**: Klausa kunci yang memberi tahu BigQuery bahwa ini bukanlah SQL UDF biasa yang dieksekusi di dalam engine internal BigQuery, melainkan sebuah **Remote Function** yang bergantung pada eksekusi server eksternal.
-* **`YOUR_PROJECT_NAME.asia-southeast2.agent_platform_conn`**: Menunjuk ke *Cloud Resource Connection* regional (`asia-southeast2`) yang telah Anda buat di langkah sebelumnya. BigQuery akan menggunakan *Service Account* bawaan dari koneksi ini (yang sudah diberi izin `roles/cloudfunctions.invoker` dan `roles/run.invoker`) untuk menembus autentikasi Cloud Function secara aman.
+* **`YOUR_PROJECT_NAME.asia-southeast2.embedding_conn`**: Menunjuk ke *Cloud Resource Connection* regional (`asia-southeast2`) yang telah Anda buat di langkah sebelumnya. BigQuery akan menggunakan *Service Account* bawaan dari koneksi ini (yang sudah diberi izin `roles/cloudfunctions.invoker` dan `roles/run.invoker`) untuk menembus autentikasi Cloud Function secara aman.
 
 ---
 
