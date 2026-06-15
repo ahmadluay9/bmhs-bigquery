@@ -1,6 +1,17 @@
 
 ---
+# Table of Contents:
+1. [Membuat Dataset](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#1-membuat-dataset)
+2. [Membuat Tabel `dim_hospitals`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#2-membuat-tabel-dim_hospitals)
+3. [Membuat Tabel `hospital_admissions_daily`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#3-membuat-tabel-hospital_admissions_daily)
+4. [Membuat Tabel `schema_metadata`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#4-membuat-tabel-schema_metadata)
+5. [Membuat Tabel `schema_metadata_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#5-membuat-tabel-schema_metadata_embeddings)
+6. [Membuat Connection ID](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#6-membuat-connection-id)
+7. [Menambahkan Role ke Remote Model Connection's Service Account](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#7-grant-a-role-to-the-remote-model-connections-service-account)
+8. [Membuat custom function](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#8-membuat-custom-function)
+9. [Membuat remote function di Bigquery](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#9-buat-remote-function-di-bigquery)
 
+---
 ## 1. Membuat Dataset
 
 Perintah ini akan membuat dataset di region Jakarta (`asia-southeast2`).
@@ -212,7 +223,7 @@ OPTIONS(
 ```
 
 ## 6. Membuat Connection ID
-Di BigQuery, **Cloud Resource Connection** (seperti `gcp_vertex_ai_connection`) berperan sebagai jembatan pengubung (*secure delegation*) antara BigQuery dengan Agent Platform API.
+Di BigQuery, **Cloud Resource Connection** berperan sebagai jembatan pengubung (*secure delegation*) antara BigQuery dengan Agent Platform API.
 
 Berikut adalah detail peran utama dari *connection* ini:
 
@@ -230,7 +241,7 @@ OPTIONS (
 );
 ```
 
-## 7. Grant a role to the remote model connection's service account
+## 7. Menambahkan Role ke Remote Model Connection's Service Account
 ```
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
     --member="serviceAccount:bqcx-158103152291-f1j3@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
