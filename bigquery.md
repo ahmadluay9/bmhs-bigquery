@@ -10,7 +10,13 @@
 7. [Menambahkan Role ke Remote Model Connection's Service Account](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#7-grant-a-role-to-the-remote-model-connections-service-account)
 8. [Membuat custom function](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#8-membuat-custom-function)
 9. [Membuat remote function di Bigquery](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#9-buat-remote-function-di-bigquery)
-
+10. [Seeding data ke tabel `schema_metadata_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#10-seeding-data-ke-tabel-schema_metadata_embeddings)
+11. [Train Model](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#11-train-model)
+12. [Model Evaluation](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#12-model-evaluation)
+13. [Model Inference](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#13-model-inference)
+14. [Membuat tabel `query_examples`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#14-membuat-tabel-query_examples)
+15. [Membuat tabel `query_examples_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#15-membuat-tabel-query_examples_embeddings)
+16. [Seeding data ke table `query_examples_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#16-seeding-data-ke-tabel-query_examples_embeddings)
 ---
 ## 1. Membuat Dataset
 
@@ -248,7 +254,7 @@ OPTIONS (
 
 ```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-000000000-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/aiplatform.user" \
     --condition=None
 ```
@@ -256,14 +262,14 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
 
 ```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-000000000-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/cloudfunctions.invoker" \
     --condition=None
 ```
 
 ```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-000000000-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/run.invoker" \
     --condition=None
 ```
@@ -398,14 +404,14 @@ $ gcloud functions describe get-vertex-embeddings \
 
 Perintah terakhir (`gcloud functions describe ...`) digunakan untuk mengambil alamat URI/URL HTTP resmi dari fungsi yang baru dideploy. URL inilah yang nantinya akan Anda daftarkan di BigQuery sebagai Remote Function.
 
-## 9. Buat remote function di Bigquery - 
+## 9. Buat remote function di Bigquery 
 ```sql
 CREATE OR REPLACE FUNCTION `healthcare_forecasting_jakarta_v2.get_text_embedding`(text STRING)
 RETURNS JSON
 REMOTE WITH CONNECTION `YOUR_PROJECT_NAME.asia-southeast2.agent_platform_conn`
 OPTIONS (
   -- URL .run.app asli dari Cloud Function Gen 2 Anda (contoh:https://get-vertex-embeddings-g2u45nvkda-et.a.run.app)
-  endpoint = 'https://get-vertex-embeddings-xxxxxx-et.a.run.app',
+  endpoint = 'https://get-vertex-embeddings-xxxxxxxx-et.a.run.app',
 
   user_defined_context = [
     ("model", "gemini-embedding-001"),
