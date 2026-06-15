@@ -242,24 +242,28 @@ OPTIONS (
 ```
 
 ## 7. Menambahkan Role ke Remote Model Connection's Service Account
-```
+- Buka `Connections`, pilih nama `Connection ID` yang kita buat
+- Copy `Service account id` contoh : `bqcx-158103152291-12x4@gcp-sa-bigquery-condel.iam.gserviceaccount.com`
+- lalu jalankan command berikut:
+
+```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-158103152291-f1j3@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/aiplatform.user" \
     --condition=None
 ```
 - Fungsi: Memberikan otorisasi kepada Service Account koneksi untuk memanggil model-model Agent Platform (seperti gemini-embedding-001).
 
-```
+```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-158103152291-f1j3@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/cloudfunctions.invoker" \
     --condition=None
 ```
 
-```
+```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_NAME \
-    --member="serviceAccount:bqcx-158103152291-f1j3@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+    --member="serviceAccount:bqcx-PROJECT_ID_-xxxx@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
     --role="roles/run.invoker" \
     --condition=None
 ```
