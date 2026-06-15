@@ -17,6 +17,7 @@
 14. [Membuat tabel `query_examples`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#14-membuat-tabel-query_examples)
 15. [Membuat tabel `query_examples_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#15-membuat-tabel-query_examples_embeddings)
 16. [Seeding data ke table `query_examples_embeddings`](https://github.com/ahmadluay9/bmhs-bigquery/blob/master/bigquery.md#16-seeding-data-ke-tabel-query_examples_embeddings)
+
 ---
 ## 1. Membuat Dataset
 
